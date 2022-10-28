@@ -1,0 +1,34 @@
+kanony2.py 2 1_2
+rr.py      0.2  1_2 31
+dp2.py     0  0.1 31
+top2.py    0 80
+bottom2.py 4  1
+shuffle.py 4
+exclude.py 4
+cd C:\Users\MSI PC\Documents\GitHub\P22
+# python dp_v2_001.py orig_data9.csv test.csv  0 0.8 36007
+# python rr_v1.py  test.csv test.csv 0.1 0_1_2_4_5 40792
+# python top_v1.py test.csv test.csv 12 1
+# python dp_v2_001.py test.csv test.csv  0 0.4 38336
+# python shuffle_v1.py test.csv test.csv 30009
+
+# python kanony_v1.py orig_data9.csv test.csv 2 1_2
+
+
+
+# python bottom_v1.py test.csv test.csv 4 1
+# python shuffle_v1.py test.csv test.csv 4
+# python exclude_v1.py test.csv test.csv 4
+
+# python top_v1.py orig_data9.csv test.csv 0 80
+
+python dp_v2_001.py orig_data9.csv test.csv  0 0.7 29713
+python shuffle_v1.py test.csv test.csv 88508
+python rr_v1.py  test.csv test.csv 0.1 0_1_3_6_12 85104
+python rr_v1.py  test.csv test.csv 0.9 1 13533
+python shuffle_v1.py test.csv test.csv 47853
+python shuffle_v1.py test.csv test.csv 91358
+python shuffle_v1.py test.csv test.csv 47853
+python rr_v1.py  test.csv test.csv 0.9 1 13533
+python shuffle_v1.py test.csv test.csv 47853
+python rr_v1.py  test.csv test.csv 0.9 1 13533
