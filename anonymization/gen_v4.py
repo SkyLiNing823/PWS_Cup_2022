@@ -1,10 +1,10 @@
 import random
 import os
-from kanony_v1 import *
-from rr_v1 import *
-from dp_v2_001 import *
-from top_v1 import *
-from bottom_v1 import *
+from ..utils.kanony_v1 import *
+from utils.rr_v1 import *
+from ..utils.dp_v2_001 import *
+from ..utils.top_v1 import *
+from ..utils.bottom_v1 import *
 
 import multiprocessing as mp
 

@@ -1,11 +1,11 @@
 import random
 import copy
 import os
-from kanony_v1 import *
-from rr_v1 import *
-from lap_v2 import *
-from top_v1 import *
-from bottom_v1 import *
+from ..utils.kanony_v1 import *
+from utils.rr_v1 import *
+from ..utils.lap_v2 import *
+from ..utils.top_v1 import *
+from ..utils.bottom_v1 import *
 import category_encoders as ce
 import warnings
 import shutil

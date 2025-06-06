@@ -1,39 +1,36 @@
 import numpy as np
-import pandas as pd
 import random
+fileName = 'orig_data9.csv'
+data = np.loadtxt(fileName, dtype=np.int32, delimiter=',')
+AGE = data[:, 0]
+RACE = data[:, 1]
+GENDER = data[:, 2]
 
 
-def remainCol(df, n):
-    L = []
-    for i in range(13):
-        if i not in n:
-            L.append(i)
-    return df.drop(df.columns[L], axis=1)
+NOH = data[:, 6]
+HTN = data[:, 7]
+DM = data[:, 8]
+IHD = data[:, 9]
+CKD = data[:, 10]
+COPD = data[:, 11]
+CA = data[:, 12]
+data = np.delete(data, np.where(AGE > 65)[0], axis=0)
+INCOME = data[:, 3]
+data = np.delete(data, np.where(INCOME > 15)[0], axis=0)
+EDUCATION = data[:, 4]
+data = np.delete(data, np.where(EDUCATION > 5)[0], axis=0)
+VETERAN = data[:, 5]
+data = np.delete(data, np.where(VETERAN > 1)[0], axis=0)
 
+# data = EDUCATION[EDUCATION <= 5]
+# data = VETERAN[VETERAN <= 1]
+# INCOME[INCOME > 15] = 15
+# EDUCATION[EDUCATION > 5] = 5
+# VETERAN[VETERAN > 1] = 1
 
-orig = 'ANONY/tmp.csv'
-# orig = 'DG17.csv'
-InputFilename = 'NE/ref_data_main_14.csv'
-# np.loadtxt(orig, dtype=np.int32, delimiter=',')
-df = pd.read_csv(orig, header=None)
-target = pd.read_csv(InputFilename, header=None)
-output = np.array([0 for _ in range(80)])
-for i in range(10000):
-    count = 0
-    rint = random.randint(1, 5)
-    remainList = []
-    while len(remainList) < rint:
-        col = random.randint(0, 12)
-        if col not in remainList:
-            remainList.append(col)
-        remainList.sort()
-    LEN = np.size(target, 0)
-    for j in range(LEN):
-        if remainCol(target, remainList).iloc[j].values.tolist() in remainCol(df, remainList).values.tolist():
-            count += 1
-            output[j] = 1
-    if count == 40:
-        print('----------------------------------------------')
-        print(remainList)
-        print(f'{count} / {LEN}')
-# np.savetxt('DG.csv', output, fmt='%d')
+np.savetxt('test.csv', data, fmt='%d', delimiter=',')
+
+# print(f'AGE < 65 : {np.where(AGE < 65)[0].size}')
+# print(f'INCOME > 15 : {np.where(INCOME > 15)[0]}')
+# print(f'EDUCATION > 5 : {np.where(EDUCATION > 5)[0]}')
+# python cor.py orig_data79.csv orig_data79-cor.csv

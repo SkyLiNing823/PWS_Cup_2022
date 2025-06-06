@@ -2,16 +2,12 @@ import random
 import copy
 import os
 from kanony_v1 import *
-from rr_v1 import *
-from lap_v1 import *
-from top_v1 import *
-from bottom_v1 import *
-import category_encoders as ce
-import warnings
-import shutil
+from utils.rr_v1 import *
+from lap_v2 import *
 import json
 
 import multiprocessing as mp
+import threading
 
 
 def kanony_f(df, k, qi):
@@ -83,52 +79,22 @@ def nn_f(df, rows, cols):
     return df
 
 
-class Anony:
-    def __init__(self, df, log, process, score):
-        self.df = df
-        self.log = log
-        self.process = copy.deepcopy(process)
-        self.score = score
-
-# def score(df, dataSelect, countList):
-#     Score = 0
-#     match = [0 for _ in range(50)]
-#     anony = pd.read_csv(f'ref_data{dataSelect}/anony.csv', header=None)
-#     for i in range(len(df)):
-#         if df.iloc[i].values.tolist()[1:] in anony.values[:, 1:].tolist():
-#             idx = anony.values[:, 1:].tolist().index(
-#                 df.iloc[i].values.tolist()[1:])
-#             if int(df.iloc[i].values.tolist()[0] / 10) == int(anony.iloc[idx].values.tolist()[0] / 10):
-#                 Score += 1
-#                 match[i] += 1
-#                 countList[i] += 1
-#     return Score, match
-
-
 def dropCol(df, n):
     return df.drop(df.columns[n], axis=1)
 
 
-def score(df, dataSelect, countList):
+def score(df, AnonySelect, countList):
     Score = 0
-    match = [0 for _ in range(50)]
-    anony = pd.read_csv(f'ref_data{dataSelect}/anony.csv', header=None)
+    match = [0 for _ in range(80)]
+    anony = pd.read_csv(f'ANONY/{AnonySelect}', header=None)
     for i in range(len(df)):
         if df.iloc[i].values.tolist()[1:] in anony.values[:, 1:].tolist():
             idx = anony.values[:, 1:].tolist().index(
                 df.iloc[i].values.tolist()[1:])
             if int(df.iloc[i].values.tolist()[0] / 10) == int(anony.iloc[idx].values.tolist()[0] / 10):
-                Score += 100
+                Score += 1
                 match[i] += 1
                 countList[i] += 1
-        elif dropCol(df, [0]).iloc[i].values.tolist() in dropCol(anony, [0]).values.tolist():
-            Score += 10
-        elif dropCol(df, [0, 3]).iloc[i].values.tolist() in dropCol(anony, [0, 3]).values.tolist():
-            Score += 5
-        # elif dropCol(df, [0, 2, 3]).iloc[i].values.tolist() in dropCol(anony, [0, 2, 3]).values.tolist():
-        #     Score += 5
-        # elif dropCol(df, [0, 3, 4]).iloc[i].values.tolist() in dropCol(anony, [0, 3, 4]).values.tolist():
-        #     Score += 5
     return Score, match
 
 
@@ -316,159 +282,103 @@ def execute(df, log, action):
     return df, log
 
 
-def start(anonyList, countList, highScore, dataSelect, process):
-    path = f'ref_data{dataSelect}'
+def start(countList, highScore, dataSelect, team):
+    path = f'MC_{team}'
     df = pd.read_csv(
-        f'ref_data{dataSelect}/ref_data{dataSelect}.csv', header=None)
+        f'NE/ref_data_main_{dataSelect}.csv', header=None)
+    rint = random.randint(1, 10)
+    process = []
+    for i in range(rint):
+        action = random.choice(actionList)
+        process.append(getParameters(action))
     log = ''
     for i in range(len(process)):
         df, log = execute(df, log, process[i])
     # df.columns = [
     #     'AGE', 'GENDER', 'RACE', 'INCOME', 'EDUCATION', 'VETERAN', 'NOH', 'HTN', 'DM', 'IHD', 'CKD', 'COPD', 'CA']
-    Score, match = score(df, dataSelect, countList)
+    Score, match = score(df, AnonySelect, countList)
+    countList = np.sum([countList, match], axis=0).tolist()
     if Score > highScore.value:
         with open(f'{path}/log.txt', "w") as text_file:
             text_file.write(log)
         with open(f'{path}/{int(round(Score))}-{sum(match)}.csv', "w") as text_file:
-            for i in range(50):
+            for i in range(80):
                 text_file.write(f'{match[i]}\n')
+        df.to_csv(f'{path}/best-anony.csv', header=False, index=False)
         highScore.value = Score
         print(
             f'High Score update to {highScore.value} ( match = {sum(match)} ). CSV is generated.')
-    anonyList.insert(0, Anony(df, log, process, Score))
 
 
-def showScore(x):
-    return x.score
+def thread_distribute(countList, highScore, dataSelect, team, count):
+    t_list = []
+    n = 10
+    for _ in range(n):
+        t = threading.Thread(target=start, args=(
+            countList, highScore, dataSelect, team))
+        t_list.append(t)
+    # 開始工作
+    for t in t_list:
+        t.start()
+    # 調整多程順序
+    for t in t_list:
+        t.join()
+    count.value += n
 
 
-def list2json(anonyList, dataSelect, generation):
-    path = f'ref_data{dataSelect}/gen.json'
-    json_file = open(path, mode='w')
-    save_json_content = [{'gen': generation}]
-    for anony in anonyList:
-        result_json = {
-            'process': anony.process,
-            "score": anony.score}
-        save_json_content.append(result_json)
-    json.dump(save_json_content, json_file)
-
-
-def json2list(anonyList, dataSelect):
-    with open(f'ref_data{dataSelect}/gen.json') as json_file:
-        data = json.load(json_file)
-    generation = data[0]['gen']
-    df = ''
-    log = ''
-    for i in range(1, len(data)):
-        anonyList.append(Anony(df, log, data[i]['process'], data[i]['score']))
-    anonyList.sort(key=showScore, reverse=True)
-    return anonyList, generation
-
-
-def genEnd(anonyList, countList, dataSelect, limit, generation):
-    anonyList.sort(key=showScore, reverse=True)
-    # environmental limit
-    average = 0
-    if len(anonyList) > limit:
-        del anonyList[limit:]
-    for anony in anonyList:
-        average += anony.score
-    average /= len(anonyList)
-    print(
-        f'GEN {generation}: highest = {anonyList[0].score}, average = {average}')
-    with open(f'ref_data{dataSelect}/MonteCarlo.txt', 'w') as text_file:
-        for i in range(50):
+def genEnd(count, countList, team):
+    print(f'checked {count.value} files.')
+    with open(f'MC_{team}/MonteCarlo.txt', 'w') as text_file:
+        for i in range(80):
             text_file.write(f'{countList[i]}\n')
-    list2json(anonyList, dataSelect, generation)
-    return anonyList
+    with open(f'MC_{team}/MC_expect.txt', 'w') as text_file:
+        for i in range(80):
+            text_file.write(f'{round(countList[i]/int(count.value),4)}\n')
+    df = np.array(countList)
+    check = np.array([0 for _ in range(80)])
+    for i in range(len(df)//2):
+        idx = np.unravel_index(np.argmax(df, axis=None), df.shape)
+        if(df[idx] > 10):
+            df[idx] = 1
+            check[idx] = 1
+    for i in range(len(df)):
+        if check[i] != 1:
+            df[i] = 0
+    np.savetxt(f'MC_{team}/{team}-answer.csv', df, fmt='%d')
 
 
 if __name__ == '__main__':
     if len(sys.argv) < 2:
-        print(sys.argv[0], ' dataSelect (continue)')
+        print(sys.argv[0], ' team (continue)')
         exit(-1)
-    dataSelect = sys.argv[1]
-    # dataSelect = 9
+    TeamList = ['AY', 'DG', 'HK', 'JD', 'KM', 'MK',
+                'MM', 'ND', 'PM', 'PS', 'RF', 'RH', 'TI', 'TM']
+    RefDataList = [61, 17, 63, 34, 65, 21, 7, 8, 70, 26, 27, 13, 14, 15]
+    AnonyFileList = ['output.csv', 'ano17.csv', 'orig_data63_output.csv', '0929_JD_ver6_orig_data34.csv', 'main_data65_Kogeki_Shinaide.csv', 'data_21_final.csv',
+                     '7_2022-1002-112655.csv', '20221003220051_data_main_8.csv', 'anon_data_main_70.csv', 'out_2.csv', 'anon_data_main_27.csv', 'anon_data13.csv', 'tmp.csv', 'anony_data_main_15.csv']
+    team = sys.argv[1]
+    dataSelect = RefDataList[TeamList.index(team)]
+    AnonySelect = AnonyFileList[TeamList.index(team)]
+    print(f'Team Name : {team}')
+    print(f'Anony File Name : {AnonySelect}')
+    print(f'RefData Name : ref_data_main_{dataSelect}.csv')
+    if not os.path.exists(f'MC_{team}'):
+        os.makedirs(f'MC_{team}')
     ctn = (len(sys.argv) == 3)
     num_cores = int(mp.cpu_count())
-    pool = mp.Pool(num_cores)
-    highScore = mp.Value("d", -100.0)
-    # parameters
-    individual_limit = 120
-    environmental_limit = 30
-    new_limit = 60
-    mate_Limit = 2
-    heritable_P = 85
-    loss_P = 15
-    shuffle_P = 15
-    mutate_P = 15
-    anonyList = mp.Manager().list()
-    countList = mp.Manager().list([0 for _ in range(50)])
+    count = mp.Value("d", 0)
+    highScore = mp.Value("d", 0)
+    countList = mp.Manager().list([0 for _ in range(80)])
     actionList = [_ for _ in range(11)]
-    generation = 1
-    if ctn:
-        anonyList, generation = json2list(anonyList, dataSelect)
-        print(
-            f'start from GEN {generation}: highest = {anonyList[0].score}')
-    else:
-        # first generation
-        for i in range(environmental_limit):
-            process = []
-            action = random.choice(actionList)
-            process.append(getParameters(action))
-            Process = copy.deepcopy(process)
-            p = mp.Process(target=start, args=(
-                anonyList, countList, highScore, dataSelect, Process))
-            p.start()
-            p.join()
-        genEnd(anonyList, countList, dataSelect,
-               environmental_limit, generation)
-    # evolution
+    MP_limit = num_cores*3
     while True:
-        generation += 1
-        # new gene
-        for i in range(new_limit):
-            process = []
-            action = random.choice(actionList)
-            process.append(getParameters(action))
-            Process = copy.deepcopy(process)
-            p2 = mp.Process(target=start, args=(
-                anonyList, countList, highScore, dataSelect, Process))
-            p2.start()
-            p2.join()
-        for i in range(len(anonyList)):
-            if len(anonyList) >= individual_limit:
-                break
-            for child in range(mate_Limit):
-                if len(anonyList) >= individual_limit:
-                    break
-                j = random.randint(0, len(anonyList)-1)
-                if random.randint(1, 100) <= heritable_P and i != j:
-                    # heritable
-                    process = copy.deepcopy(anonyList[i].process)
-                    rint = random.randint(0, len(anonyList[j].process)-1)
-                    if anonyList[j].process[rint] in process:
-                        for num in range(len(anonyList[j].process)):
-                            if anonyList[j].process[num] not in process:
-                                process.append(anonyList[j].process[num])
-                    else:
-                        process.append(anonyList[j].process[rint])
-                    # loss gene
-                    if random.randint(1, 100) <= loss_P and len(process) > 1:
-                        del process[random.randint(0, len(process)-1)]
-                    # shuffle
-                    if random.randint(1, 100) <= shuffle_P:
-                        random.shuffle(process)
-                    # mutate
-                    if random.randint(1, 100) <= mutate_P:
-                        rint = random.randint(0, len(process)-1)
-                        action = process[rint][0]
-                        process[rint] = getParameters(action)
-                    Process = copy.deepcopy(process)
-                    p1 = mp.Process(target=start, args=(
-                        anonyList, countList, highScore, dataSelect, Process))
-                    p1.start()
-                    p1.join()
-        genEnd(anonyList, countList, dataSelect,
-               environmental_limit, generation)
+        p_list = []
+        for i in range(MP_limit):
+            p = mp.Process(target=thread_distribute, args=(
+                countList, highScore, dataSelect, team, count))
+            p_list.append(p)
+        for p in p_list:
+            p.start()
+        for p in p_list:
+            p.join()
+        genEnd(count, countList, team)
